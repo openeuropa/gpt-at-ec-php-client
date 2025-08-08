@@ -1,0 +1,15 @@
+{
+    "name": "openeuropa/gpt-at-ec-php-client",
+    "description": "PHP API client to interact with European Commission GPT@EC.",
+    "type": "library",
+    "license": "EUPL-1.2",
+    "minimum-stability": "stable",
+    "require": {
+        "php": "^8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Openeuropa\\GptAtEcPhpClient\\": "src/"
+        }
+    }
+}
