@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Openeuropa\GptAtEcPhpClient;
 
 use OpenAI\Contracts\Resources\ChatContract;
-use OpenAI\Contracts\Resources\ModelsContract;
 use OpenAI\Contracts\TransporterContract;
 use OpenAI\Resources\Chat;
-use OpenAI\Resources\Models;
 use Openeuropa\GptAtEcPhpClient\Contracts\ClientContract;
+use Openeuropa\GptAtEcPhpClient\Contracts\Resources\ModelsContract;
 use Openeuropa\GptAtEcPhpClient\Contracts\Resources\QuotaConsumptionContract;
+use Openeuropa\GptAtEcPhpClient\Resources\Models;
 use Openeuropa\GptAtEcPhpClient\Resources\QuotaConsumption;
 
 class Client implements ClientContract

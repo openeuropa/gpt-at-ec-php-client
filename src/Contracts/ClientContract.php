@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Openeuropa\GptAtEcPhpClient\Contracts;
 
 use OpenAI\Contracts\Resources\ChatContract;
-use OpenAI\Contracts\Resources\ModelsContract;
+use Openeuropa\GptAtEcPhpClient\Contracts\Resources\ModelsContract;
 use Openeuropa\GptAtEcPhpClient\Contracts\Resources\QuotaConsumptionContract;
 
 interface ClientContract
