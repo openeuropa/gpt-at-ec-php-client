@@ -1,0 +1,6 @@
+{
+  "consumed_prompt_tokens": 1234,
+  "consumed_completion_tokens": 5678,
+  "consumed_total_tokens": 6912,
+  "quota": 100000
+}

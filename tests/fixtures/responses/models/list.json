@@ -1,0 +1,51 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "mistral-small-24b-instruct-2501",
+      "object": "model",
+      "created": 1745486833029,
+      "owned_by": "mistralai",
+      "name": "Mistral-Small-24B-Instruct-2501",
+      "description": "Mistral Small 3 ( 2501 ) sets a new benchmark in the \"small\" Large Language Models category.",
+      "sensitivity_level": [
+        "PA",
+        "SNC",
+        "CU"
+      ],
+      "default_for": []
+    },
+    {
+      "id": "llama-3.3-70b-instruct",
+      "object": "model",
+      "created": 1744201138356,
+      "owned_by": "meta",
+      "name": "LLama 3.3 70b instruct",
+      "description": "Very powerful open-weights model on par with the capabilities of GPT-4o for many types of tasks.",
+      "sensitivity_level": [
+        "PA",
+        "SNC",
+        "CU"
+      ],
+      "default_for": [
+        "SNC"
+      ]
+    },
+    {
+      "id": "gpt-4o",
+      "object": "model",
+      "created": 1686935002,
+      "owned_by": "OpenAI",
+      "name": "GPT-4o",
+      "description": "GPT-4o is OpenAI's latest large language model, designed to handle text, audio, images, and video. The 'o' stands for 'omni', reflecting its capability to process and generate content across these different modalities, which also enhances its accuracy and responsiveness in human-computer interactions. GPT-4o offers significant advancements in performance, including larger context windows, efficient tokenisation, and faster processing speeds. It has a context length of 128.000 tokens, which is approximately 96.000 words (depending on the language and content). The model provides a fast response, but there is a daily user quota due to budget limitations. <a href='https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models#gpt-4o-and-gpt-4-turbo'>See here for more information</a>. <br> GPT-4o is hosted on Microsoft Azure in the EU with an opt-out clause on prompt analysis by third parties. <br> Knowledge cutoff date is October 2023",
+      "sensitivity_level": [
+        "PA",
+        "CU"
+      ],
+      "default_for": [
+        "PA",
+        "CU"
+      ]
+    }
+  ]
+}
