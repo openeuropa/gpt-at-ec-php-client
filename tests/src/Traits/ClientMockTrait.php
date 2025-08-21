@@ -24,7 +24,7 @@ trait ClientMockTrait
         Response|ResponseInterface|string $response,
         string $methodName = 'requestObject',
         bool $validateParams = true
-    ) {
+    ): Client {
         $transporter = $this->createMock(TransporterContract::class);
 
         $transporter
