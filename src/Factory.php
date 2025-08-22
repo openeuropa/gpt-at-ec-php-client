@@ -24,16 +24,6 @@ final class Factory
     private ?string $apiKey = null;
 
     /**
-     * The organization for the requests.
-     */
-    private ?string $organization = null;
-
-    /**
-     * The project for the requests.
-     */
-    private ?string $project = null;
-
-    /**
      * The HTTP client for the requests.
      */
     private ?ClientInterface $httpClient = null;
@@ -65,26 +55,6 @@ final class Factory
     public function withApiKey(#[\SensitiveParameter] string $apiKey): self
     {
         $this->apiKey = trim($apiKey);
-
-        return $this;
-    }
-
-    /**
-     * Sets the organization for the requests.
-     */
-    public function withOrganization(?string $organization): self
-    {
-        $this->organization = $organization;
-
-        return $this;
-    }
-
-    /**
-     * Sets the project for the requests.
-     */
-    public function withProject(?string $project): self
-    {
-        $this->project = $project;
 
         return $this;
     }
@@ -150,14 +120,6 @@ final class Factory
 
         if ($this->apiKey !== null) {
             $headers = Headers::withAuthorization(ApiKey::from($this->apiKey));
-        }
-
-        if ($this->organization !== null) {
-            $headers = $headers->withOrganization($this->organization);
-        }
-
-        if ($this->project !== null) {
-            $headers = $headers->withProject($this->project);
         }
 
         foreach ($this->headers as $name => $value) {
