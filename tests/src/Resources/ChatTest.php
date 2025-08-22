@@ -6,7 +6,6 @@ namespace Openeuropa\Tests\GptAtEcPhpClient\Resources;
 
 use GuzzleHttp\Psr7\Response as GuzzleResponse;
 use GuzzleHttp\Psr7\Stream;
-use OpenAI\Responses\Chat\CreateResponse;
 use OpenAI\Responses\Chat\CreateResponseChoice;
 use OpenAI\Responses\Chat\CreateResponseUsage;
 use OpenAI\Responses\Chat\CreateStreamedResponse;

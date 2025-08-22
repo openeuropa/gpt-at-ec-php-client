@@ -37,5 +37,4 @@ class Client implements ClientContract
         return new QuotaConsumption($this->transporter);
     }
 
-
 }

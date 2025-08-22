@@ -32,6 +32,7 @@ trait ClientMockTrait
             ->method($methodName)
             ->with(
                 $this->callback(function (Payload $payload) use ($validateParams, $method, $resource, $params): bool {
+                    // @todo refactor this
                     $baseUri = BaseUri::from('api.tech.ec.europa.eu/ecgpt/v1');
                     $headers = Headers::withAuthorization(ApiKey::from('foo'));
                     $queryParams = QueryParams::create();
