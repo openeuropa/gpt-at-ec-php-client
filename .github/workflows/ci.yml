@@ -11,25 +11,48 @@ on:
 
 jobs:
   automated-tests:
+    name: PHP ${{ matrix.php_version }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         php_version:
           - "8.3"
           - "8.4"
+          - "8.5"
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
           php-version: ${{ matrix.php_version }}
+          coverage: none
+
+      - name: Install dependencies
+        uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
+
+      - name: Run PHPUnit
+        run: composer test -- --colors=never
+
+  code-coverage:
+    name: Code coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: "8.3"
           coverage: xdebug
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
+        uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
 
-      - name: Run PHPUnit
-        run: vendor/bin/phpunit --coverage-text --colors=never
+      - name: Check code coverage
+        run: composer coverage
