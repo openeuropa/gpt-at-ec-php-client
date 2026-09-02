@@ -355,13 +355,17 @@ final class HttpTransporterTest extends TestCase
             ->method('sendRequest')
             ->willReturn($response);
 
-        $this->expectException(UnserializableResponse::class);
-        $this->expectExceptionMessage('Syntax error');
-
-        $this->httpTransporter->requestObject($payload);
+        try {
+            $this->httpTransporter->requestObject($payload);
+            $this->fail('Expected UnserializableResponse to be thrown.');
+        }
+        catch (UnserializableResponse $e) {
+            $this->assertSame('Syntax error', $e->getMessage());
+            $this->assertSame($response, $e->response);
+        }
     }
 
-    public function testRequestObjectPlainTextResponse(): void
+    public function testRequestStringOrObjectPlainTextResponse(): void
     {
         $payload = Payload::create('foo', []);
 
@@ -376,9 +380,118 @@ final class HttpTransporterTest extends TestCase
             ->method('sendRequest')
             ->willReturn($response);
 
-        $result = $this->httpTransporter->requestObject($payload);
+        $result = $this->httpTransporter->requestStringOrObject($payload);
 
         $this->assertSame('Hello, how are you?', $result->data());
+    }
+
+    public function testRequestStringOrObjectJsonResponse(): void
+    {
+        $payload = Payload::create('foo', []);
+
+        $response = new Response(
+            200,
+            ['Content-Type' => 'application/json; charset=utf-8'],
+            json_encode(['text' => 'Hey!']),
+        );
+
+        $this->client
+            ->expects($this->once())
+            ->method('sendRequest')
+            ->willReturn($response);
+
+        $result = $this->httpTransporter->requestStringOrObject($payload);
+
+        $this->assertSame(['text' => 'Hey!'], $result->data());
+    }
+
+    public function testRequestStringOrObjectErrors(): void
+    {
+        $payload = Payload::create('foo', []);
+
+        $response = new Response(
+            401,
+            ['Content-Type' => 'application/json; charset=utf-8'],
+            json_encode(['code' => '900900', 'message' => 'Unclassified Authentication Failure']),
+        );
+
+        $this->client
+            ->expects($this->once())
+            ->method('sendRequest')
+            ->willReturn($response);
+
+        $this->expectException(ErrorException::class);
+        $this->expectExceptionMessage('900900: Unclassified Authentication Failure');
+
+        $this->httpTransporter->requestStringOrObject($payload);
+    }
+
+    public function testRequestStringOrObjectSerialisationErrors(): void
+    {
+        $payload = Payload::create('foo', []);
+
+        $response = new Response(200, ['Content-Type' => 'application/json; charset=utf-8'], 'err');
+
+        $this->client
+            ->expects($this->once())
+            ->method('sendRequest')
+            ->willReturn($response);
+
+        $this->expectException(UnserializableResponse::class);
+        $this->expectExceptionMessage('Syntax error');
+
+        $this->httpTransporter->requestStringOrObject($payload);
+    }
+
+    public function testAddHeader(): void
+    {
+        $payload = Payload::list('models');
+
+        $response = new Response(
+            headers: ['Content-Type' => 'application/json; charset=utf-8'],
+            body: json_encode([]),
+        );
+
+        $this->client->expects($this->exactly(2))
+            ->method('sendRequest')
+            ->with(
+                $this->callback(function (RequestInterface $request): bool {
+                    $this->assertSame('bar', $request->getHeaderLine('X-Foo'));
+                    // Pre-existing headers are preserved.
+                    $this->assertSame('Bearer foo', $request->getHeaderLine('Authorization'));
+
+                    return true;
+                })
+            )
+            ->willReturn($response);
+
+        $return = $this->httpTransporter->addHeader('X-Foo', 'bar');
+        $this->assertSame($this->httpTransporter, $return);
+
+        // The header is sent on all subsequent requests, not just the first.
+        $this->httpTransporter->requestObject($payload);
+        $this->httpTransporter->requestObject($payload);
+    }
+
+    public function testRequestStringOrObjectPlainTextErrorIsNotThrown(): void
+    {
+        $payload = Payload::create('foo', []);
+
+        $response = new Response(
+            400,
+            ['Content-Type' => 'text/plain; charset=utf-8'],
+            'Bad request',
+        );
+
+        $this->client
+            ->expects($this->once())
+            ->method('sendRequest')
+            ->willReturn($response);
+
+        // Errors are only thrown for JSON content types; plain text is returned as is.
+        $result = $this->httpTransporter->requestStringOrObject($payload);
+
+        $this->assertSame('Bad request', $result->data());
     }
 
     public function testRequestContent(): void
