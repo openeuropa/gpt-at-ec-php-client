@@ -199,7 +199,7 @@ class FactoryTest extends TestCase
         // When no stream handler is passed, only the following two clients are supported:
         // - \GuzzleHttp\Client.
         // - \Symfony\Component\HttpClient\Psr18Client.
-        $mock_http_client = $this->createMock(ClientInterface::class);
+        $mock_http_client = $this->createStub(ClientInterface::class);
 
         $client = (new Factory())
             ->withHttpClient($mock_http_client)
