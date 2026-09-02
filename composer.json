@@ -9,6 +9,7 @@
         "openai-php/client": "^0.15.0"
     },
     "require-dev": {
+        "esi/phpunit-coverage-check": "^3.1",
         "guzzlehttp/psr7": "^2.7",
         "guzzlehttp/guzzle": "^7.9",
         "phpunit/phpunit": "^12.3"
@@ -22,6 +23,14 @@
         "psr-4": {
             "Openeuropa\\Tests\\GptAtEcPhpClient\\": "tests/src"
         }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "coverage": [
+            "@putenv XDEBUG_MODE=coverage",
+            "phpunit --coverage-text --colors=never --coverage-clover=.phpunit.cache/clover.xml",
+            "coverage-check .phpunit.cache/clover.xml 100 --show-files --table-width=160"
+        ]
     },
     "config": {
         "allow-plugins": {
