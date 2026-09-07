@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 namespace Openeuropa\GptAtEcPhpClient\Resources;
 
+use OpenAI\Resources\Concerns\Streamable;
 use OpenAI\Resources\Concerns\Transportable;
 use OpenAI\Responses\Responses\CreateResponse;
+use OpenAI\Responses\StreamResponse;
 use OpenAI\ValueObjects\Transporter\Payload;
 use Openeuropa\GptAtEcPhpClient\Contracts\Resources\ResponsesContract;
+use Openeuropa\GptAtEcPhpClient\Responses\Responses\Concerns\NormalizesCreateResponse;
+use Openeuropa\GptAtEcPhpClient\Responses\Responses\CreateStreamedResponseFactory;
 
 final class Responses implements ResponsesContract
 {
 
+    use NormalizesCreateResponse;
+    use Streamable;
     use Transportable;
 
     /**
@@ -19,39 +25,27 @@ final class Responses implements ResponsesContract
      */
     public function create(array $parameters): CreateResponse
     {
+        $this->ensureNotStreamed($parameters);
+
         $payload = Payload::create('responses', $parameters);
 
         $response = $this->transporter->requestObject($payload);
 
-        return CreateResponse::from(self::normalize($response->data()), $response->meta());
+        return CreateResponse::from(self::normalizeCreateResponse($response->data()), $response->meta());
     }
 
     /**
-     * Normalizes GPT@EC deviations from the OpenAI "responses" payload.
-     *
-     * - "created_at" is returned as a float (e.g. 1788534395.0) while OpenAI
-     *   returns an integer timestamp.
-     * - When a "json_schema" text format is requested, the API echoes the
-     *   schema back under "text.format.schema_" instead of "text.format.schema".
-     *
-     * Both make the OpenAI response hydration fail.
-     *
-     * @param array<array-key, mixed> $data
-     *
-     * @return array<array-key, mixed>
+     * {@inheritDoc}
      */
-    private static function normalize(array $data): array
+    public function createStreamed(array $parameters): StreamResponse
     {
-        if (isset($data['created_at']) && is_float($data['created_at'])) {
-            $data['created_at'] = (int) $data['created_at'];
-        }
+        $parameters = $this->setStreamParameter($parameters);
 
-        if (isset($data['text']['format']['schema_']) && !isset($data['text']['format']['schema'])) {
-            $data['text']['format']['schema'] = $data['text']['format']['schema_'];
-            unset($data['text']['format']['schema_']);
-        }
+        $payload = Payload::create('responses', $parameters);
 
-        return $data;
+        $response = $this->transporter->requestStream($payload);
+
+        return new StreamResponse(CreateStreamedResponseFactory::class, $response);
     }
 
 }

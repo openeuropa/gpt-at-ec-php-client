@@ -149,7 +149,7 @@ echo $response->quota; // 100000
 ### Responses
 
 Creates a model response through the Responses API.\
-A single method is available, `create`. Streaming is not supported yet.
+Two methods are available, `create` and `createStreamed`.
 
 Unlike the Chat endpoint, the Responses endpoint does not apply a parameter whitelist: all parameters
 from the request schema are forwarded to the model. This makes it the endpoint to use for structured
@@ -157,6 +157,10 @@ output, by passing a JSON schema as `text.format`.
 
 Only some models support the Responses API. The API answers
 `400 Model '...' does not support the Responses API` for the others.
+
+`create` method
+
+Create a model response. The full response will be returned at once by the API.
 
 ```php
 $response = $client->responses()->create([
@@ -189,6 +193,46 @@ echo $response->status; // "completed"
 echo $response->outputText; // '{"title":"...","body":"..."}'
 echo $response->text->format->name; // "news_item"
 echo $response->usage->totalTokens; // 104
+```
+
+`createStreamed` method
+
+Create a model response. The events will be streamed back as the model generates them.
+
+```php
+$stream = $client->responses()->createStreamed([
+    'model' => 'gpt-5.1',
+    'input' => 'Give me a title and a body for a news item about the weather.',
+    'text' => [
+        'format' => [
+            'type' => 'json_schema',
+            'name' => 'news_item',
+            'strict' => true,
+            'schema' => [
+                'type' => 'object',
+                'properties' => [
+                    'title' => ['type' => 'string'],
+                    'body' => ['type' => 'string'],
+                ],
+                'required' => ['title', 'body'],
+                'additionalProperties' => false,
+            ],
+        ],
+    ],
+]);
+
+foreach ($stream as $event) {
+    echo $event->event; // "response.created", "response.output_text.delta", ..., "response.completed"
+
+    if ($event->event === 'response.output_text.delta') {
+        echo $event->response->delta; // "{\"", "title", "\":\"", ...
+    }
+
+    if ($event->event === 'response.completed') {
+        echo $event->response->response->status; // "completed"
+        echo $event->response->response->outputText; // '{"title":"...","body":"..."}'
+    }
+}
 ```
 
 ## Tests
