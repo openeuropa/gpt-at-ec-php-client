@@ -37,12 +37,18 @@ $factory = new \Openeuropa\GptAtEcPhpClient\Factory();
 $client = $factory->withApiKey($key)->make();
 ```
 
-Now the client can be used to interact with the 3 available endpoints.
+Now the client can be used to interact with the 4 available endpoints.
 
 ### Chat
 
 The Chat Completions API endpoint will generate a model response from a list of messages comprising a
 conversation.
+
+Not all optional parameters are available for every model: GPT@EC applies a whitelist of forwarded
+parameters per model family, and parameters not in the whitelist are silently ignored. In particular
+`response_format` is not forwarded for any model, so structured output (JSON schema) is not available
+through this endpoint. Use the [Responses](#responses) endpoint instead, which does not apply the
+whitelist.
 
 `create` method
 
@@ -138,6 +144,51 @@ echo $response->consumedPromptTokens; // 1234
 echo $response->consumedCompletionTokens; // 5678
 echo $response->consumedTotalTokens; // 6912
 echo $response->quota; // 100000
+```
+
+### Responses
+
+Creates a model response through the Responses API.\
+A single method is available, `create`. Streaming is not supported yet.
+
+Unlike the Chat endpoint, the Responses endpoint does not apply a parameter whitelist: all parameters
+from the request schema are forwarded to the model. This makes it the endpoint to use for structured
+output, by passing a JSON schema as `text.format`.
+
+Only some models support the Responses API. The API answers
+`400 Model '...' does not support the Responses API` for the others.
+
+```php
+$response = $client->responses()->create([
+    'model' => 'gpt-5.1',
+    'input' => [
+        [
+            'role' => 'user',
+            'content' => 'Give me a title and a body for a news item about the weather.',
+        ],
+    ],
+    'text' => [
+        'format' => [
+            'type' => 'json_schema',
+            'name' => 'news_item',
+            'strict' => true,
+            'schema' => [
+                'type' => 'object',
+                'properties' => [
+                    'title' => ['type' => 'string'],
+                    'body' => ['type' => 'string'],
+                ],
+                'required' => ['title', 'body'],
+                'additionalProperties' => false,
+            ],
+        ],
+    ],
+]);
+
+echo $response->status; // "completed"
+echo $response->outputText; // '{"title":"...","body":"..."}'
+echo $response->text->format->name; // "news_item"
+echo $response->usage->totalTokens; // 104
 ```
 
 ## Tests
