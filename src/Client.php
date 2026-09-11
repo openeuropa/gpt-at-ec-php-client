@@ -10,8 +10,10 @@ use OpenAI\Resources\Chat;
 use Openeuropa\GptAtEcPhpClient\Contracts\ClientContract;
 use Openeuropa\GptAtEcPhpClient\Contracts\Resources\ModelsContract;
 use Openeuropa\GptAtEcPhpClient\Contracts\Resources\QuotaConsumptionContract;
+use Openeuropa\GptAtEcPhpClient\Contracts\Resources\ResponsesContract;
 use Openeuropa\GptAtEcPhpClient\Resources\Models;
 use Openeuropa\GptAtEcPhpClient\Resources\QuotaConsumption;
+use Openeuropa\GptAtEcPhpClient\Resources\Responses;
 
 class Client implements ClientContract
 {
@@ -35,6 +37,11 @@ class Client implements ClientContract
     public function quotaConsumption(): QuotaConsumptionContract
     {
         return new QuotaConsumption($this->transporter);
+    }
+
+    public function responses(): ResponsesContract
+    {
+        return new Responses($this->transporter);
     }
 
 }

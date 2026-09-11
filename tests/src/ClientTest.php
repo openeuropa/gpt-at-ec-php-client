@@ -27,7 +27,8 @@ class ClientTest extends TestCase
                 '__construct',
                 'chat',
                 'models',
-                'quotaConsumption'
+                'quotaConsumption',
+                'responses',
             ],
             $methods,
         );
