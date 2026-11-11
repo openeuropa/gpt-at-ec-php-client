@@ -12,12 +12,18 @@ use OpenAI\Exceptions\InvalidArgumentException;
 use OpenAI\Responses\Responses\CreateStreamedResponse;
 use OpenAI\Responses\Responses\Format\JsonSchemaFormat;
 use OpenAI\Responses\Responses\Format\TextFormat;
+use OpenAI\Responses\Responses\Output\OutputFunctionToolCall;
 use OpenAI\Responses\Responses\Output\OutputMessage;
+use OpenAI\Responses\Responses\Output\OutputReasoning;
+use OpenAI\Responses\Responses\Streaming\OutputItem;
 use OpenAI\Responses\Responses\Streaming\OutputTextDelta;
+use OpenAI\Responses\Responses\Streaming\ReasoningTextDelta;
+use OpenAI\Responses\Responses\Streaming\ReasoningTextDone;
 use OpenAI\Responses\Responses\Streaming\Response as StreamingResponse;
 use OpenAI\ValueObjects\Transporter\Response;
 use Openeuropa\GptAtEcPhpClient\Client;
 use Openeuropa\GptAtEcPhpClient\Resources\Responses;
+use Openeuropa\GptAtEcPhpClient\Responses\StreamResponse;
 use Openeuropa\Tests\GptAtEcPhpClient\Traits\ClientMockTrait;
 use Openeuropa\Tests\GptAtEcPhpClient\Traits\FixturesTrait;
 use PHPUnit\Framework\TestCase;
@@ -36,6 +42,18 @@ class ResponsesTest extends TestCase
         ],
         'required' => ['zzz_marker', 'field_body'],
         'additionalProperties' => false,
+    ];
+
+    private const array WEATHER_TOOL = [
+        'type' => 'function',
+        'name' => 'get_weather',
+        'description' => 'Get the current weather for a city.',
+        'parameters' => [
+            'type' => 'object',
+            'properties' => ['city' => ['type' => 'string']],
+            'required' => ['city'],
+        ],
+        'strict' => false,
     ];
 
     /**
@@ -139,6 +157,66 @@ class ResponsesTest extends TestCase
 
         $this->assertInstanceOf(JsonSchemaFormat::class, $result->text->format);
         $this->assertSame(['type' => 'object'], $result->text->format->schema);
+    }
+
+    /**
+     * A "function_call" item without "status" (gpt-oss-120b) is completed.
+     */
+    public function testCreateWithFunctionCallWithoutStatus(): void {
+        $payload = [
+            'model' => 'gpt-oss-120b',
+            'input' => 'What is the weather in Brussels right now? Use the get_weather tool.',
+            'tools' => [self::WEATHER_TOOL],
+        ];
+
+        $client = $this->getClientMock(
+            'POST',
+            'responses',
+            $payload,
+            Response::from($this->getFixture('responses/responses/create_function_call'), []),
+        );
+
+        $result = $client->responses()->create($payload);
+
+        $this->assertSame('completed', $result->status);
+        $this->assertSame(1788968400, $result->createdAt);
+        $this->assertCount(2, $result->output);
+        $this->assertInstanceOf(OutputReasoning::class, $result->output[0]);
+        $this->assertNull($result->output[0]->status);
+
+        $call = $result->output[1];
+        $this->assertInstanceOf(OutputFunctionToolCall::class, $call);
+        $this->assertSame('completed', $call->status);
+        $this->assertSame('fc_a1b2c3d4e5f60718', $call->id);
+        $this->assertSame('call_a008f72eff32e6cb', $call->callId);
+        $this->assertSame('get_weather', $call->name);
+        $this->assertSame(['city' => 'Brussels'], json_decode($call->arguments, true));
+    }
+
+    /**
+     * A "status" returned by the API is kept as-is.
+     */
+    public function testCreateKeepsFunctionCallStatus(): void {
+        $payload = [
+            'model' => 'gpt-oss-120b',
+            'input' => 'Hello!',
+        ];
+
+        $fixture = $this->getFixture('responses/responses/create_function_call');
+        $fixture['status'] = 'incomplete';
+        $fixture['output'][1]['status'] = 'incomplete';
+
+        $client = $this->getClientMock(
+            'POST',
+            'responses',
+            $payload,
+            Response::from($fixture, []),
+        );
+
+        $result = $client->responses()->create($payload);
+
+        $this->assertInstanceOf(OutputFunctionToolCall::class, $result->output[1]);
+        $this->assertSame('incomplete', $result->output[1]->status);
     }
 
     public function testAvailableEndpoints(): void {
@@ -290,6 +368,175 @@ class ResponsesTest extends TestCase
         $this->assertSame(67, $last->response->response->usage->inputTokens);
         $this->assertSame(76, $last->response->response->usage->outputTokens);
         $this->assertSame(143, $last->response->response->usage->totalTokens);
+    }
+
+    /**
+     * Streams a tool call whose "function_call" items have no "status".
+     */
+    public function testCreateStreamedWithFunctionCallWithoutStatus(): void {
+        $payload = [
+            'model' => 'gpt-oss-120b',
+            'input' => 'What is the weather in Brussels right now? Use the get_weather tool.',
+            'tools' => [self::WEATHER_TOOL],
+        ];
+
+        $client = $this->getClientMock(
+            'POST',
+            'responses',
+            $payload + ['stream' => true],
+            new GuzzleResponse(
+                body: new Stream(fopen(__DIR__ . '/../../fixtures/responses/responses/streamed_function_call.txt', 'r')),
+            ),
+            'requestStream',
+        );
+
+        $events = iterator_to_array($client->responses()->createStreamed($payload), false);
+        $this->assertSame(
+            [
+                'response.created',
+                'response.in_progress',
+                'response.output_item.added',
+                'response.function_call_arguments.delta',
+                'response.function_call_arguments.delta',
+                'response.function_call_arguments.delta',
+                'response.function_call_arguments.delta',
+                'response.function_call_arguments.done',
+                'response.output_item.done',
+                'response.completed',
+            ],
+            array_map(static fn (CreateStreamedResponse $event): string => $event->event, $events),
+        );
+
+        $added = $events[2]->response;
+        $this->assertInstanceOf(OutputItem::class, $added);
+        $this->assertInstanceOf(OutputFunctionToolCall::class, $added->item);
+        $this->assertSame('in_progress', $added->item->status);
+        $this->assertSame('', $added->item->arguments);
+
+        $done = $events[8]->response;
+        $this->assertInstanceOf(OutputItem::class, $done);
+        $this->assertInstanceOf(OutputFunctionToolCall::class, $done->item);
+        $this->assertSame('completed', $done->item->status);
+        $this->assertSame(['city' => 'Brussels'], json_decode($done->item->arguments, true));
+
+        $completed = $events[9]->response;
+        $this->assertInstanceOf(StreamingResponse::class, $completed);
+        $this->assertSame('completed', $completed->response->status);
+        $this->assertInstanceOf(OutputFunctionToolCall::class, $completed->response->output[0]);
+        $this->assertSame('completed', $completed->response->output[0]->status);
+        $this->assertSame('get_weather', $completed->response->output[0]->name);
+    }
+
+    /**
+     * Skips the reasoning part events of a gpt-oss-120b stream.
+     */
+    public function testCreateStreamedSkipsReasoningParts(): void {
+        $payload = [
+            'model' => 'gpt-oss-120b',
+            'input' => 'What is 17 * 23? Answer with the number only.',
+        ];
+
+        $client = $this->getClientMock(
+            'POST',
+            'responses',
+            $payload + ['stream' => true],
+            new GuzzleResponse(
+                body: new Stream(fopen(__DIR__ . '/../../fixtures/responses/responses/streamed_reasoning.txt', 'r')),
+            ),
+            'requestStream',
+        );
+
+        $result = $client->responses()->createStreamed($payload);
+        $this->assertInstanceOf(StreamResponse::class, $result);
+
+        $events = iterator_to_array($result, false);
+        $this->assertSame(
+            [
+                'response.created',
+                'response.in_progress',
+                'response.output_item.added',
+                'response.reasoning_text.delta',
+                'response.reasoning_text.delta',
+                'response.reasoning_text.delta',
+                'response.reasoning_text.delta',
+                'response.reasoning_text.done',
+                'response.output_item.done',
+                'response.output_item.added',
+                'response.content_part.added',
+                'response.output_text.delta',
+                'response.output_text.delta',
+                'response.output_text.done',
+                'response.content_part.done',
+                'response.output_item.done',
+                'response.completed',
+            ],
+            array_map(static fn (CreateStreamedResponse $event): string => $event->event, $events),
+        );
+
+        $this->assertInstanceOf(OutputItem::class, $events[2]->response);
+        $this->assertInstanceOf(OutputReasoning::class, $events[2]->response->item);
+
+        $this->assertInstanceOf(ReasoningTextDelta::class, $events[3]->response);
+        $this->assertSame('We', $events[3]->response->delta);
+        $this->assertInstanceOf(ReasoningTextDone::class, $events[7]->response);
+        $this->assertSame('We need 17*23 = 391.', $events[7]->response->text);
+
+        $this->assertInstanceOf(OutputItem::class, $events[8]->response);
+        $this->assertInstanceOf(OutputReasoning::class, $events[8]->response->item);
+        $this->assertSame('completed', $events[8]->response->item->status);
+
+        $completed = end($events)->response;
+        $this->assertInstanceOf(StreamingResponse::class, $completed);
+        $this->assertSame('completed', $completed->response->status);
+        $this->assertSame(1788968400, $completed->response->createdAt);
+        $this->assertInstanceOf(OutputReasoning::class, $completed->response->output[0]);
+        $this->assertInstanceOf(OutputMessage::class, $completed->response->output[1]);
+        $this->assertSame('391', $completed->response->outputText);
+        $this->assertSame(12, $completed->response->usage->outputTokensDetails->reasoningTokens);
+    }
+
+    /**
+     * Uses the "item_id" of a streamed "function_call" item that has no id.
+     */
+    public function testCreateStreamedWithFunctionCallWithoutId(): void {
+        $event = [
+            'item' => [
+                'arguments' => '{"city": "Brussels"}',
+                'call_id' => 'call_a008f72eff32e6cb',
+                'name' => 'get_weather',
+                'type' => 'function_call',
+                'status' => 'completed',
+                'item_id' => 'fc_a1b2c3d4e5f60718',
+                'output_index' => 1,
+                'sequence_number' => 30,
+            ],
+            'output_index' => 1,
+            'sequence_number' => 30,
+            'type' => 'response.output_item.done',
+        ];
+
+        $client = $this->getClientMock(
+            'POST',
+            'responses',
+            [
+                'model' => 'gpt-oss-120b',
+                'input' => 'Hello!',
+                'stream' => true,
+            ],
+            new GuzzleResponse(body: Utils::streamFor('data: ' . json_encode($event) . "\n\n")),
+            'requestStream',
+        );
+
+        $events = iterator_to_array($client->responses()->createStreamed([
+            'model' => 'gpt-oss-120b',
+            'input' => 'Hello!',
+        ]), false);
+
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(OutputItem::class, $events[0]->response);
+        $this->assertInstanceOf(OutputFunctionToolCall::class, $events[0]->response->item);
+        $this->assertSame('fc_a1b2c3d4e5f60718', $events[0]->response->item->id);
+        $this->assertSame('completed', $events[0]->response->item->status);
     }
 
     /**

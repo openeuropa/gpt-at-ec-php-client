@@ -7,11 +7,11 @@ namespace Openeuropa\GptAtEcPhpClient\Resources;
 use OpenAI\Resources\Concerns\Streamable;
 use OpenAI\Resources\Concerns\Transportable;
 use OpenAI\Responses\Responses\CreateResponse;
-use OpenAI\Responses\StreamResponse;
 use OpenAI\ValueObjects\Transporter\Payload;
 use Openeuropa\GptAtEcPhpClient\Contracts\Resources\ResponsesContract;
 use Openeuropa\GptAtEcPhpClient\Responses\Responses\Concerns\NormalizesCreateResponse;
 use Openeuropa\GptAtEcPhpClient\Responses\Responses\CreateStreamedResponseFactory;
+use Openeuropa\GptAtEcPhpClient\Responses\StreamResponse;
 
 final class Responses implements ResponsesContract
 {

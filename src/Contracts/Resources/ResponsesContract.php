@@ -6,7 +6,7 @@ namespace Openeuropa\GptAtEcPhpClient\Contracts\Resources;
 
 use OpenAI\Responses\Responses\CreateResponse;
 use OpenAI\Responses\Responses\CreateStreamedResponse;
-use OpenAI\Responses\StreamResponse;
+use Openeuropa\GptAtEcPhpClient\Responses\StreamResponse;
 
 /**
  * Subset of OpenAI responses resource.

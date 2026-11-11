@@ -14,8 +14,10 @@ trait NormalizesCreateResponse
      *   returns an integer timestamp.
      * - When a "json_schema" text format is requested, the API echoes the
      *   schema back under "text.format.schema_" instead of "text.format.schema".
+     * - Some models (e.g. gpt-oss-120b) return "function_call" output items
+     *   without a "status". See normalizeOutputItem().
      *
-     * Both make the OpenAI response hydration fail.
+     * All of them make the OpenAI response hydration fail.
      *
      * @param array<array-key, mixed> $data
      *
@@ -32,7 +34,44 @@ trait NormalizesCreateResponse
             unset($data['text']['format']['schema_']);
         }
 
+        if (isset($data['output']) && is_array($data['output'])) {
+            foreach ($data['output'] as $key => $item) {
+                if (is_array($item)) {
+                    // A returned response is finished, so are its items.
+                    $data['output'][$key] = self::normalizeOutputItem($item, 'completed');
+                }
+            }
+        }
+
         return $data;
+    }
+
+    /**
+     * Normalizes GPT@EC deviations in an output item.
+     *
+     * @param array<array-key, mixed> $item
+     * @param 'in_progress'|'completed' $defaultStatus
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function normalizeOutputItem(array $item, string $defaultStatus): array
+    {
+        if (($item['type'] ?? null) !== 'function_call') {
+            return $item;
+        }
+
+        // In the "response.output_item.done" event, gpt-oss-120b sends the id
+        // of the item as "item_id".
+        if (!isset($item['id']) && isset($item['item_id'])) {
+            $item['id'] = $item['item_id'];
+        }
+
+        // gpt-oss-120b sends the items of a response without a status.
+        if (!isset($item['status'])) {
+            $item['status'] = $defaultStatus;
+        }
+
+        return $item;
     }
 
 }
