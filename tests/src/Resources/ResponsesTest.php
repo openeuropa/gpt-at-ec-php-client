@@ -17,10 +17,13 @@ use OpenAI\Responses\Responses\Output\OutputMessage;
 use OpenAI\Responses\Responses\Output\OutputReasoning;
 use OpenAI\Responses\Responses\Streaming\OutputItem;
 use OpenAI\Responses\Responses\Streaming\OutputTextDelta;
+use OpenAI\Responses\Responses\Streaming\ReasoningTextDelta;
+use OpenAI\Responses\Responses\Streaming\ReasoningTextDone;
 use OpenAI\Responses\Responses\Streaming\Response as StreamingResponse;
 use OpenAI\ValueObjects\Transporter\Response;
 use Openeuropa\GptAtEcPhpClient\Client;
 use Openeuropa\GptAtEcPhpClient\Resources\Responses;
+use Openeuropa\GptAtEcPhpClient\Responses\StreamResponse;
 use Openeuropa\Tests\GptAtEcPhpClient\Traits\ClientMockTrait;
 use Openeuropa\Tests\GptAtEcPhpClient\Traits\FixturesTrait;
 use PHPUnit\Framework\TestCase;
@@ -422,6 +425,74 @@ class ResponsesTest extends TestCase
         $this->assertInstanceOf(OutputFunctionToolCall::class, $completed->response->output[0]);
         $this->assertSame('completed', $completed->response->output[0]->status);
         $this->assertSame('get_weather', $completed->response->output[0]->name);
+    }
+
+    /**
+     * Skips the reasoning part events of a gpt-oss-120b stream.
+     */
+    public function testCreateStreamedSkipsReasoningParts(): void {
+        $payload = [
+            'model' => 'gpt-oss-120b',
+            'input' => 'What is 17 * 23? Answer with the number only.',
+        ];
+
+        $client = $this->getClientMock(
+            'POST',
+            'responses',
+            $payload + ['stream' => true],
+            new GuzzleResponse(
+                body: new Stream(fopen(__DIR__ . '/../../fixtures/responses/responses/streamed_reasoning.txt', 'r')),
+            ),
+            'requestStream',
+        );
+
+        $result = $client->responses()->createStreamed($payload);
+        $this->assertInstanceOf(StreamResponse::class, $result);
+
+        $events = iterator_to_array($result, false);
+        $this->assertSame(
+            [
+                'response.created',
+                'response.in_progress',
+                'response.output_item.added',
+                'response.reasoning_text.delta',
+                'response.reasoning_text.delta',
+                'response.reasoning_text.delta',
+                'response.reasoning_text.delta',
+                'response.reasoning_text.done',
+                'response.output_item.done',
+                'response.output_item.added',
+                'response.content_part.added',
+                'response.output_text.delta',
+                'response.output_text.delta',
+                'response.output_text.done',
+                'response.content_part.done',
+                'response.output_item.done',
+                'response.completed',
+            ],
+            array_map(static fn (CreateStreamedResponse $event): string => $event->event, $events),
+        );
+
+        $this->assertInstanceOf(OutputItem::class, $events[2]->response);
+        $this->assertInstanceOf(OutputReasoning::class, $events[2]->response->item);
+
+        $this->assertInstanceOf(ReasoningTextDelta::class, $events[3]->response);
+        $this->assertSame('We', $events[3]->response->delta);
+        $this->assertInstanceOf(ReasoningTextDone::class, $events[7]->response);
+        $this->assertSame('We need 17*23 = 391.', $events[7]->response->text);
+
+        $this->assertInstanceOf(OutputItem::class, $events[8]->response);
+        $this->assertInstanceOf(OutputReasoning::class, $events[8]->response->item);
+        $this->assertSame('completed', $events[8]->response->item->status);
+
+        $completed = end($events)->response;
+        $this->assertInstanceOf(StreamingResponse::class, $completed);
+        $this->assertSame('completed', $completed->response->status);
+        $this->assertSame(1788968400, $completed->response->createdAt);
+        $this->assertInstanceOf(OutputReasoning::class, $completed->response->output[0]);
+        $this->assertInstanceOf(OutputMessage::class, $completed->response->output[1]);
+        $this->assertSame('391', $completed->response->outputText);
+        $this->assertSame(12, $completed->response->usage->outputTokensDetails->reasoningTokens);
     }
 
     /**
