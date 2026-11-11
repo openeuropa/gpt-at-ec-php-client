@@ -496,6 +496,50 @@ class ResponsesTest extends TestCase
     }
 
     /**
+     * Uses the "item_id" of a streamed "function_call" item that has no id.
+     */
+    public function testCreateStreamedWithFunctionCallWithoutId(): void {
+        $event = [
+            'item' => [
+                'arguments' => '{"city": "Brussels"}',
+                'call_id' => 'call_a008f72eff32e6cb',
+                'name' => 'get_weather',
+                'type' => 'function_call',
+                'status' => 'completed',
+                'item_id' => 'fc_a1b2c3d4e5f60718',
+                'output_index' => 1,
+                'sequence_number' => 30,
+            ],
+            'output_index' => 1,
+            'sequence_number' => 30,
+            'type' => 'response.output_item.done',
+        ];
+
+        $client = $this->getClientMock(
+            'POST',
+            'responses',
+            [
+                'model' => 'gpt-oss-120b',
+                'input' => 'Hello!',
+                'stream' => true,
+            ],
+            new GuzzleResponse(body: Utils::streamFor('data: ' . json_encode($event) . "\n\n")),
+            'requestStream',
+        );
+
+        $events = iterator_to_array($client->responses()->createStreamed([
+            'model' => 'gpt-oss-120b',
+            'input' => 'Hello!',
+        ]), false);
+
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(OutputItem::class, $events[0]->response);
+        $this->assertInstanceOf(OutputFunctionToolCall::class, $events[0]->response->item);
+        $this->assertSame('fc_a1b2c3d4e5f60718', $events[0]->response->item->id);
+        $this->assertSame('completed', $events[0]->response->item->status);
+    }
+
+    /**
      * A failed response goes through the same normalization as a completed one.
      */
     public function testCreateStreamedFailed(): void {

@@ -47,20 +47,28 @@ trait NormalizesCreateResponse
     }
 
     /**
-     * Sets the status of a "function_call" item if the item has no status.
-     *
-     * openai-php cannot read a "function_call" item without a status. The
-     * function does not change items of other types.
+     * Normalizes GPT@EC deviations in an output item.
      *
      * @param array<array-key, mixed> $item
-     * @param 'in_progress'|'completed' $status
+     * @param 'in_progress'|'completed' $defaultStatus
      *
      * @return array<array-key, mixed>
      */
-    private static function normalizeOutputItem(array $item, string $status): array
+    private static function normalizeOutputItem(array $item, string $defaultStatus): array
     {
-        if (($item['type'] ?? null) === 'function_call' && !isset($item['status'])) {
-            $item['status'] = $status;
+        if (($item['type'] ?? null) !== 'function_call') {
+            return $item;
+        }
+
+        // In the "response.output_item.done" event, gpt-oss-120b sends the id
+        // of the item as "item_id".
+        if (!isset($item['id']) && isset($item['item_id'])) {
+            $item['id'] = $item['item_id'];
+        }
+
+        // gpt-oss-120b sends the items of a response without a status.
+        if (!isset($item['status'])) {
+            $item['status'] = $defaultStatus;
         }
 
         return $item;
