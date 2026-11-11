@@ -14,8 +14,10 @@ trait NormalizesCreateResponse
      *   returns an integer timestamp.
      * - When a "json_schema" text format is requested, the API echoes the
      *   schema back under "text.format.schema_" instead of "text.format.schema".
+     * - Some models (e.g. gpt-oss-120b) return "function_call" output items
+     *   without a "status". See normalizeOutputItem().
      *
-     * Both make the OpenAI response hydration fail.
+     * All of them make the OpenAI response hydration fail.
      *
      * @param array<array-key, mixed> $data
      *
@@ -32,7 +34,36 @@ trait NormalizesCreateResponse
             unset($data['text']['format']['schema_']);
         }
 
+        if (isset($data['output']) && is_array($data['output'])) {
+            foreach ($data['output'] as $key => $item) {
+                if (is_array($item)) {
+                    // A returned response is finished, so are its items.
+                    $data['output'][$key] = self::normalizeOutputItem($item, 'completed');
+                }
+            }
+        }
+
         return $data;
+    }
+
+    /**
+     * Sets the status of a "function_call" item if the item has no status.
+     *
+     * openai-php cannot read a "function_call" item without a status. The
+     * function does not change items of other types.
+     *
+     * @param array<array-key, mixed> $item
+     * @param 'in_progress'|'completed' $status
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function normalizeOutputItem(array $item, string $status): array
+    {
+        if (($item['type'] ?? null) === 'function_call' && !isset($item['status'])) {
+            $item['status'] = $status;
+        }
+
+        return $item;
     }
 
 }

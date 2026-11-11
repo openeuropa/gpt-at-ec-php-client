@@ -1,0 +1,20 @@
+data: {"response":{"id":"resp_a1b2c3d4e5f60718","created_at":1788968400.0,"model":"openai/gpt-oss-120b","object":"response","output":[],"parallel_tool_calls":true,"temperature":1.0,"tool_choice":"auto","tools":[{"name":"get_weather","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]},"strict":false,"type":"function","description":"Get the current weather for a city."}],"top_p":1.0,"background":false,"max_output_tokens":130938,"service_tier":"auto","status":"in_progress","truncation":"disabled","presence_penalty":0.0,"frequency_penalty":0.0},"sequence_number":0,"type":"response.created"}
+
+data: {"response":{"id":"resp_a1b2c3d4e5f60718","created_at":1788968400.0,"model":"openai/gpt-oss-120b","object":"response","output":[],"parallel_tool_calls":true,"temperature":1.0,"tool_choice":"auto","tools":[{"name":"get_weather","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]},"strict":false,"type":"function","description":"Get the current weather for a city."}],"top_p":1.0,"background":false,"max_output_tokens":130938,"service_tier":"auto","status":"in_progress","truncation":"disabled","presence_penalty":0.0,"frequency_penalty":0.0},"sequence_number":1,"type":"response.in_progress"}
+
+data: {"item":{"arguments":"","call_id":"call_a008f72eff32e6cb","name":"get_weather","type":"function_call","id":"fc_a1b2c3d4e5f60718"},"output_index":0,"sequence_number":2,"type":"response.output_item.added"}
+
+data: {"delta":"{\n","item_id":"fc_a1b2c3d4e5f60718","output_index":0,"sequence_number":3,"type":"response.function_call_arguments.delta"}
+
+data: {"delta":"  \"city\": ","item_id":"fc_a1b2c3d4e5f60718","output_index":0,"sequence_number":4,"type":"response.function_call_arguments.delta"}
+
+data: {"delta":"\"Brussels\"\n","item_id":"fc_a1b2c3d4e5f60718","output_index":0,"sequence_number":5,"type":"response.function_call_arguments.delta"}
+
+data: {"delta":"}","item_id":"fc_a1b2c3d4e5f60718","output_index":0,"sequence_number":6,"type":"response.function_call_arguments.delta"}
+
+data: {"arguments":"{\n  \"city\": \"Brussels\"\n}","item_id":"fc_a1b2c3d4e5f60718","output_index":0,"sequence_number":7,"type":"response.function_call_arguments.done"}
+
+data: {"item":{"arguments":"{\n  \"city\": \"Brussels\"\n}","call_id":"call_a008f72eff32e6cb","name":"get_weather","type":"function_call","id":"fc_a1b2c3d4e5f60718"},"output_index":0,"sequence_number":8,"type":"response.output_item.done"}
+
+data: {"response":{"id":"resp_a1b2c3d4e5f60718","created_at":1788968400.0,"model":"openai/gpt-oss-120b","object":"response","output":[{"arguments":"{\n  \"city\": \"Brussels\"\n}","call_id":"call_a008f72eff32e6cb","name":"get_weather","type":"function_call","id":"fc_a1b2c3d4e5f60718"}],"parallel_tool_calls":true,"temperature":1.0,"tool_choice":"auto","tools":[{"name":"get_weather","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]},"strict":false,"type":"function","description":"Get the current weather for a city."}],"top_p":1.0,"background":false,"max_output_tokens":130938,"service_tier":"auto","status":"completed","truncation":"disabled","usage":{"input_tokens":134,"input_tokens_details":{"cached_tokens":128,"input_tokens_per_turn":[134],"cached_tokens_per_turn":[128]},"output_tokens":41,"output_tokens_details":{"reasoning_tokens":24,"tool_output_tokens":0,"output_tokens_per_turn":[41],"tool_output_tokens_per_turn":[0]},"total_tokens":175},"presence_penalty":0.0,"frequency_penalty":0.0},"sequence_number":9,"type":"response.completed"}
+
